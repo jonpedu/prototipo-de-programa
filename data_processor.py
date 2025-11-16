@@ -1,10 +1,11 @@
 """
 Módulo de processamento de dados
-Funções para validação, leitura e transformação de dados CSV
+Funções para validação, leitura e transformação de dados CSV e Excel
 """
 
 import pandas as pd
-from io import StringIO
+from io import StringIO, BytesIO
+import os
 
 
 def validate_inputs(uploaded_file, local_coleta):
@@ -29,11 +30,11 @@ def validate_inputs(uploaded_file, local_coleta):
 
 def process_uploaded_file(uploaded_file, data_coleta, local_coleta, periodo_coleta):
     """
-    Processa o arquivo CSV enviado e retorna um DataFrame com uma linha contendo
+    Processa o arquivo CSV ou Excel enviado e retorna um DataFrame com uma linha contendo
     as médias e os metadados
     
     Args:
-        uploaded_file: Arquivo CSV enviado
+        uploaded_file: Arquivo CSV/Excel enviado
         data_coleta: Data da coleta (datetime)
         local_coleta: Nome do local da coleta
         periodo_coleta: Período da coleta (Manhã/Tarde)
@@ -45,41 +46,76 @@ def process_uploaded_file(uploaded_file, data_coleta, local_coleta, periodo_cole
         Exception: Se houver erro ao processar o arquivo
     """
     try:
-        # Ler o conteúdo do arquivo
-        content = uploaded_file.getvalue().decode('utf-8')
+        # Detectar tipo de arquivo pela extensão
+        file_extension = os.path.splitext(uploaded_file.name)[1].lower()
         
-        # Tentar ler o CSV - primeiro tentando com cabeçalho
-        try:
-            df_temp = pd.read_csv(StringIO(content))
+        # Processar Excel
+        if file_extension in ['.xlsx', '.xls']:
+            try:
+                file_bytes = uploaded_file.getvalue()
+                df_temp = pd.read_excel(BytesIO(file_bytes), engine='openpyxl')
+            except Exception as e:
+                raise ValueError(f"Erro ao ler arquivo Excel: {str(e)}")
+        
+        # Processar CSV
+        elif file_extension == '.csv':
+            try:
+                content = uploaded_file.getvalue().decode('utf-8')
+            except UnicodeDecodeError:
+                # Tentar outra codificação
+                try:
+                    content = uploaded_file.getvalue().decode('latin-1')
+                except:
+                    content = uploaded_file.getvalue().decode('cp1252')
             
-            # Verificar se tem as colunas esperadas
-            expected_cols = ['temperatura', 'umidade', 'co2']
+            # Tentar diferentes delimitadores
+            delimiters = [',', ';', '\t', '|']
+            df_temp = None
             
-            # Normalizar nomes das colunas (lowercase e sem espaços)
-            df_temp.columns = df_temp.columns.str.lower().str.strip()
+            for delimiter in delimiters:
+                try:
+                    # Tentar com cabeçalho
+                    df_test = pd.read_csv(StringIO(content), delimiter=delimiter)
+                    
+                    # Verificar se conseguiu ler dados válidos
+                    if not df_test.empty and len(df_test.columns) >= 3:
+                        df_temp = df_test
+                        break
+                except:
+                    continue
             
-            # Verificar se todas as colunas necessárias estão presentes
-            missing_cols = [col for col in expected_cols if col not in df_temp.columns]
-            
-            if missing_cols:
-                # Se faltar colunas, tentar sem cabeçalho
-                raise ValueError("Tentando sem cabeçalho")
-                
-        except (ValueError, KeyError):
-            # Tentar ler sem cabeçalho
-            df_temp = pd.read_csv(
-                StringIO(content),
-                header=None,
-                names=['temperatura', 'umidade', 'co2']
-            )
+            if df_temp is None:
+                # Última tentativa: sem cabeçalho
+                try:
+                    df_temp = pd.read_csv(
+                        StringIO(content),
+                        delimiter=',',
+                        header=None,
+                        names=['temperatura', 'umidade', 'co2']
+                    )
+                except:
+                    raise ValueError("Não foi possível ler o arquivo CSV com nenhum delimitador.")
+        else:
+            raise ValueError(f"Formato de arquivo não suportado: {file_extension}. Use .xlsx, .xls ou .csv")
+        
+        # Normalizar nomes das colunas (lowercase e sem espaços)
+        df_temp.columns = df_temp.columns.str.lower().str.strip()
+        
+        # Verificar colunas esperadas
+        expected_cols = ['temperatura', 'umidade', 'co2']
+        
+        # Se não tiver as colunas, tentar mapear por posição
+        if not all(col in df_temp.columns for col in expected_cols):
+            if len(df_temp.columns) >= 3:
+                # Renomear primeiras 3 colunas
+                df_temp.columns = ['temperatura', 'umidade', 'co2'] + list(df_temp.columns[3:])
+            else:
+                available_cols = list(df_temp.columns)
+                raise ValueError(f"Arquivo deve ter 3 colunas: temperatura, umidade, co2. Encontradas: {available_cols}")
         
         # Validar que o DataFrame tem dados
         if df_temp.empty:
-            raise ValueError("O arquivo CSV está vazio.")
-        
-        # Validar que tem pelo menos as 3 colunas necessárias
-        if len(df_temp.columns) < 3:
-            raise ValueError("O arquivo deve conter pelo menos 3 colunas: temperatura, umidade e co2.")
+            raise ValueError("O arquivo está vazio.")
         
         # Selecionar apenas as colunas necessárias
         df_temp = df_temp[['temperatura', 'umidade', 'co2']]
@@ -92,7 +128,7 @@ def process_uploaded_file(uploaded_file, data_coleta, local_coleta, periodo_cole
         df_temp = df_temp.dropna()
         
         if df_temp.empty:
-            raise ValueError("Nenhum dado válido encontrado no arquivo.")
+            raise ValueError("Nenhum dado numérico válido encontrado. Verifique se o arquivo contém valores de temperatura, umidade e CO₂.")
         
         # Calcular médias
         temp_media = df_temp['temperatura'].mean()

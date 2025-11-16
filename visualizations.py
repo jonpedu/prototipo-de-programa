@@ -23,6 +23,9 @@ def create_temperature_chart(df, local_name):
     df_sorted = df.sort_values('data')
     df_sorted['data_str'] = df_sorted['data'].dt.strftime('%d/%m/%Y')
     
+    # Obter ordem cronológica das datas
+    datas_ordenadas = df_sorted['data_str'].unique().tolist()
+    
     # Separar dados por período
     df_manha = df_sorted[df_sorted['periodo'] == 'Manhã']
     df_tarde = df_sorted[df_sorted['periodo'] == 'Tarde']
@@ -30,31 +33,47 @@ def create_temperature_chart(df, local_name):
     # Criar figura
     fig = go.Figure()
     
-    # Adicionar barras para Manhã
+    # Adicionar linha de média diária PRIMEIRO (fica atrás das barras)
+    df_media_diaria = df_sorted.groupby('data_str', sort=False)['temperatura'].mean().reset_index()
+    fig.add_trace(go.Scatter(
+        x=df_media_diaria['data_str'],
+        y=df_media_diaria['temperatura'],
+        name='Média Diária',
+        mode='lines+markers',
+        line=dict(color='#CC0000', width=2, dash='dash'),
+        marker=dict(size=8, symbol='diamond'),
+        opacity=0.4,
+        hovertemplate='<b>Média Diária</b><br>Data: %{x}<br>Temperatura: %{y:.2f}°C<extra></extra>'
+    ))
+    
+    # Adicionar barras para Manhã (por cima das linhas)
     fig.add_trace(go.Bar(
         x=df_manha['data_str'],
         y=df_manha['temperatura'],
         name='Manhã',
         marker_color='#FF9999',
-        text=df_manha['temperatura'].round(2),
+        text=df_manha['temperatura'].round(1),
         textposition='outside',
-        texttemplate='%{text}°C',
+        texttemplate='<b>%{text}°C</b>',
+        textfont=dict(size=16, color='#000000', family='Arial Black'),
         hovertemplate='<b>Manhã</b><br>Data: %{x}<br>Temperatura: %{y:.2f}°C<extra></extra>'
     ))
     
-    # Adicionar barras para Tarde
+    # Adicionar barras para Tarde (por cima das linhas)
     fig.add_trace(go.Bar(
         x=df_tarde['data_str'],
         y=df_tarde['temperatura'],
         name='Tarde',
         marker_color='#FF6666',
-        text=df_tarde['temperatura'].round(2),
+        text=df_tarde['temperatura'].round(1),
         textposition='outside',
-        texttemplate='%{text}°C',
+        texttemplate='<b>%{text}°C</b>',
+        textfont=dict(size=16, color='#000000', family='Arial Black'),
         hovertemplate='<b>Tarde</b><br>Data: %{x}<br>Temperatura: %{y:.2f}°C<extra></extra>'
     ))
     
-    # Layout
+    # Layout com margem superior e ordem cronológica forçada
+    max_temp = df_sorted['temperatura'].max()
     fig.update_layout(
         title=f'Variação de Temperatura - {local_name}',
         xaxis_title='Data',
@@ -70,6 +89,11 @@ def create_temperature_chart(df, local_name):
             y=1.02,
             xanchor="right",
             x=1
+        ),
+        yaxis=dict(range=[0, max_temp * 1.15]),  # 15% de margem superior
+        xaxis=dict(
+            categoryorder='array',
+            categoryarray=datas_ordenadas
         )
     )
     
@@ -91,6 +115,9 @@ def create_humidity_chart(df, local_name):
     df_sorted = df.sort_values('data')
     df_sorted['data_str'] = df_sorted['data'].dt.strftime('%d/%m/%Y')
     
+    # Obter ordem cronológica das datas
+    datas_ordenadas = df_sorted['data_str'].unique().tolist()
+    
     # Separar dados por período
     df_manha = df_sorted[df_sorted['periodo'] == 'Manhã']
     df_tarde = df_sorted[df_sorted['periodo'] == 'Tarde']
@@ -98,31 +125,47 @@ def create_humidity_chart(df, local_name):
     # Criar figura
     fig = go.Figure()
     
-    # Adicionar barras para Manhã
+    # Adicionar linha de média diária PRIMEIRO (fica atrás das barras)
+    df_media_diaria = df_sorted.groupby('data_str', sort=False)['umidade'].mean().reset_index()
+    fig.add_trace(go.Scatter(
+        x=df_media_diaria['data_str'],
+        y=df_media_diaria['umidade'],
+        name='Média Diária',
+        mode='lines+markers',
+        line=dict(color='#0066CC', width=2, dash='dash'),
+        marker=dict(size=8, symbol='diamond'),
+        opacity=0.4,
+        hovertemplate='<b>Média Diária</b><br>Data: %{x}<br>Umidade: %{y:.2f}%<extra></extra>'
+    ))
+    
+    # Adicionar barras para Manhã (por cima das linhas)
     fig.add_trace(go.Bar(
         x=df_manha['data_str'],
         y=df_manha['umidade'],
         name='Manhã',
         marker_color='#99CCFF',
-        text=df_manha['umidade'].round(2),
+        text=df_manha['umidade'].round(1),
         textposition='outside',
-        texttemplate='%{text}%',
+        texttemplate='<b>%{text}%</b>',
+        textfont=dict(size=16, color='#000000', family='Arial Black'),
         hovertemplate='<b>Manhã</b><br>Data: %{x}<br>Umidade: %{y:.2f}%<extra></extra>'
     ))
     
-    # Adicionar barras para Tarde
+    # Adicionar barras para Tarde (por cima das linhas)
     fig.add_trace(go.Bar(
         x=df_tarde['data_str'],
         y=df_tarde['umidade'],
         name='Tarde',
         marker_color='#3399FF',
-        text=df_tarde['umidade'].round(2),
+        text=df_tarde['umidade'].round(1),
         textposition='outside',
-        texttemplate='%{text}%',
+        texttemplate='<b>%{text}%</b>',
+        textfont=dict(size=16, color='#000000', family='Arial Black'),
         hovertemplate='<b>Tarde</b><br>Data: %{x}<br>Umidade: %{y:.2f}%<extra></extra>'
     ))
     
-    # Layout
+    # Layout com margem superior e ordem cronológica forçada
+    max_umid = df_sorted['umidade'].max()
     fig.update_layout(
         title=f'Variação de Umidade - {local_name}',
         xaxis_title='Data',
@@ -138,6 +181,11 @@ def create_humidity_chart(df, local_name):
             y=1.02,
             xanchor="right",
             x=1
+        ),
+        yaxis=dict(range=[0, max_umid * 1.15]),  # 15% de margem superior
+        xaxis=dict(
+            categoryorder='array',
+            categoryarray=datas_ordenadas
         )
     )
     
@@ -159,6 +207,9 @@ def create_co2_chart(df, local_name):
     df_sorted = df.sort_values('data')
     df_sorted['data_str'] = df_sorted['data'].dt.strftime('%d/%m/%Y')
     
+    # Obter ordem cronológica das datas
+    datas_ordenadas = df_sorted['data_str'].unique().tolist()
+    
     # Separar dados por período
     df_manha = df_sorted[df_sorted['periodo'] == 'Manhã']
     df_tarde = df_sorted[df_sorted['periodo'] == 'Tarde']
@@ -166,31 +217,47 @@ def create_co2_chart(df, local_name):
     # Criar figura
     fig = go.Figure()
     
-    # Adicionar barras para Manhã
+    # Adicionar linha de média diária PRIMEIRO (fica atrás das barras)
+    df_media_diaria = df_sorted.groupby('data_str', sort=False)['co2'].mean().reset_index()
+    fig.add_trace(go.Scatter(
+        x=df_media_diaria['data_str'],
+        y=df_media_diaria['co2'],
+        name='Média Diária',
+        mode='lines+markers',
+        line=dict(color='#009900', width=2, dash='dash'),
+        marker=dict(size=8, symbol='diamond'),
+        opacity=0.4,
+        hovertemplate='<b>Média Diária</b><br>Data: %{x}<br>CO₂: %{y:.2f} ppm<extra></extra>'
+    ))
+    
+    # Adicionar barras para Manhã (por cima das linhas)
     fig.add_trace(go.Bar(
         x=df_manha['data_str'],
         y=df_manha['co2'],
         name='Manhã',
         marker_color='#99FF99',
-        text=df_manha['co2'].round(2),
+        text=df_manha['co2'].round(1),
         textposition='outside',
-        texttemplate='%{text} ppm',
+        texttemplate='<b>%{text} ppm</b>',
+        textfont=dict(size=16, color='#000000', family='Arial Black'),
         hovertemplate='<b>Manhã</b><br>Data: %{x}<br>CO₂: %{y:.2f} ppm<extra></extra>'
     ))
     
-    # Adicionar barras para Tarde
+    # Adicionar barras para Tarde (por cima das linhas)
     fig.add_trace(go.Bar(
         x=df_tarde['data_str'],
         y=df_tarde['co2'],
         name='Tarde',
         marker_color='#33CC33',
-        text=df_tarde['co2'].round(2),
+        text=df_tarde['co2'].round(1),
         textposition='outside',
-        texttemplate='%{text} ppm',
+        texttemplate='<b>%{text} ppm</b>',
+        textfont=dict(size=16, color='#000000', family='Arial Black'),
         hovertemplate='<b>Tarde</b><br>Data: %{x}<br>CO₂: %{y:.2f} ppm<extra></extra>'
     ))
     
-    # Layout
+    # Layout com margem superior e ordem cronológica forçada
+    max_co2 = df_sorted['co2'].max()
     fig.update_layout(
         title=f'Variação de CO₂ - {local_name}',
         xaxis_title='Data',
@@ -206,6 +273,11 @@ def create_co2_chart(df, local_name):
             y=1.02,
             xanchor="right",
             x=1
+        ),
+        yaxis=dict(range=[0, max_co2 * 1.15]),  # 15% de margem superior
+        xaxis=dict(
+            categoryorder='array',
+            categoryarray=datas_ordenadas
         )
     )
     
@@ -227,65 +299,185 @@ def create_consolidated_chart(df, local_name):
     df_sorted = df.sort_values('data')
     df_sorted['data_str'] = df_sorted['data'].dt.strftime('%d/%m/%Y')
     
+    # Obter ordem cronológica das datas
+    datas_ordenadas = df_sorted['data_str'].unique().tolist()
+    
     # Criar figura com eixo Y secundário
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     
-    # Agrupar por data para ter uma barra por data (média dos períodos)
-    df_grouped = df_sorted.groupby('data_str').agg({
+    # Separar por período
+    df_manha = df_sorted[df_sorted['periodo'] == 'Manhã']
+    df_tarde = df_sorted[df_sorted['periodo'] == 'Tarde']
+    
+    # Linhas de média diária PRIMEIRO (ficam atrás) com opacidade reduzida
+    df_media = df_sorted.groupby('data_str', sort=False).agg({
         'temperatura': 'mean',
         'umidade': 'mean',
         'co2': 'mean'
     }).reset_index()
     
-    # Adicionar barras para Temperatura (eixo Y primário)
+    # Média Temperatura (atrás)
     fig.add_trace(
-        go.Bar(
-            x=df_grouped['data_str'],
-            y=df_grouped['temperatura'],
-            name='Temperatura (°C)',
-            marker_color='#FF6666',
-            text=df_grouped['temperatura'].round(2),
-            texttemplate='%{text}°C',
-            textposition='outside',
-            hovertemplate='<b>Temperatura</b><br>%{y:.2f}°C<extra></extra>'
+        go.Scatter(
+            x=df_media['data_str'],
+            y=df_media['temperatura'],
+            name='Média Temp',
+            mode='lines',
+            line=dict(color='#CC0000', width=2, dash='dash'),
+            opacity=0.4,
+            hovertemplate='<b>Média Temperatura</b><br>%{y:.1f}°C<extra></extra>'
         ),
         secondary_y=False
     )
     
-    # Adicionar barras para Umidade (eixo Y primário)
+    # Média Umidade (atrás)
     fig.add_trace(
-        go.Bar(
-            x=df_grouped['data_str'],
-            y=df_grouped['umidade'],
-            name='Umidade (%)',
-            marker_color='#3399FF',
-            text=df_grouped['umidade'].round(2),
-            texttemplate='%{text}%',
-            textposition='outside',
-            hovertemplate='<b>Umidade</b><br>%{y:.2f}%<extra></extra>'
+        go.Scatter(
+            x=df_media['data_str'],
+            y=df_media['umidade'],
+            name='Média Umid',
+            mode='lines',
+            line=dict(color='#0066CC', width=2, dash='dash'),
+            opacity=0.4,
+            hovertemplate='<b>Média Umidade</b><br>%{y:.1f}%<extra></extra>'
         ),
         secondary_y=False
     )
     
-    # Adicionar barras para CO₂ (eixo Y secundário)
+    # Média CO₂ (atrás)
     fig.add_trace(
-        go.Bar(
-            x=df_grouped['data_str'],
-            y=df_grouped['co2'],
-            name='CO₂ (ppm)',
-            marker_color='#33CC33',
-            text=df_grouped['co2'].round(2),
-            texttemplate='%{text} ppm',
-            textposition='outside',
-            hovertemplate='<b>CO₂</b><br>%{y:.2f} ppm<extra></extra>'
+        go.Scatter(
+            x=df_media['data_str'],
+            y=df_media['co2'],
+            name='Média CO₂',
+            mode='lines',
+            line=dict(color='#009900', width=2, dash='dash'),
+            opacity=0.4,
+            hovertemplate='<b>Média CO₂</b><br>%{y:.1f} ppm<extra></extra>'
         ),
         secondary_y=True
     )
     
+    # Temperatura - Barras Manhã (por cima das linhas)
+    fig.add_trace(
+        go.Bar(
+            x=df_manha['data_str'],
+            y=df_manha['temperatura'],
+            name='Temp Manhã',
+            marker_color='#FF9999',
+            text=df_manha['temperatura'].round(1),
+            texttemplate='<b>%{text}°C</b>',
+            textposition='outside',
+            textfont=dict(size=15, color='#000000', family='Arial Black'),
+            hovertemplate='<b>Temperatura - Manhã</b><br>%{y:.1f}°C<extra></extra>'
+        ),
+        secondary_y=False
+    )
+    
+    # Temperatura - Barras Tarde (por cima das linhas)
+    fig.add_trace(
+        go.Bar(
+            x=df_tarde['data_str'],
+            y=df_tarde['temperatura'],
+            name='Temp Tarde',
+            marker_color='#FF6666',
+            text=df_tarde['temperatura'].round(1),
+            texttemplate='<b>%{text}°C</b>',
+            textposition='outside',
+            textfont=dict(size=15, color='#000000', family='Arial Black'),
+            hovertemplate='<b>Temperatura - Tarde</b><br>%{y:.1f}°C<extra></extra>'
+        ),
+        secondary_y=False
+    )
+    
+    # Umidade - Barras Manhã (por cima das linhas)
+    fig.add_trace(
+        go.Bar(
+            x=df_manha['data_str'],
+            y=df_manha['umidade'],
+            name='Umid Manhã',
+            marker_color='#99CCFF',
+            text=df_manha['umidade'].round(1),
+            texttemplate='<b>%{text}%</b>',
+            textposition='outside',
+            textfont=dict(size=15, color='#000000', family='Arial Black'),
+            hovertemplate='<b>Umidade - Manhã</b><br>%{y:.1f}%<extra></extra>'
+        ),
+        secondary_y=False
+    )
+    
+    # Umidade - Barras Tarde (por cima das linhas)
+    fig.add_trace(
+        go.Bar(
+            x=df_tarde['data_str'],
+            y=df_tarde['umidade'],
+            name='Umid Tarde',
+            marker_color='#3399FF',
+            text=df_tarde['umidade'].round(1),
+            texttemplate='<b>%{text}%</b>',
+            textposition='outside',
+            textfont=dict(size=15, color='#000000', family='Arial Black'),
+            hovertemplate='<b>Umidade - Tarde</b><br>%{y:.1f}%<extra></extra>'
+        ),
+        secondary_y=False
+    )
+    
+    # CO₂ - Linha Manhã (eixo secundário, por cima de tudo)
+    fig.add_trace(
+        go.Scatter(
+            x=df_manha['data_str'],
+            y=df_manha['co2'],
+            name='CO₂ Manhã',
+            mode='lines+markers+text',
+            line=dict(color='#33CC33', width=3),
+            marker=dict(size=10, color='#33CC33'),
+            text=df_manha['co2'].round(1),
+            texttemplate='<b>%{text} ppm</b>',
+            textposition='top center',
+            textfont=dict(size=15, color='#000000', family='Arial Black'),
+            hovertemplate='<b>CO₂ - Manhã</b><br>%{y:.1f} ppm<extra></extra>'
+        ),
+        secondary_y=True
+    )
+    
+    # CO₂ - Linha Tarde (eixo secundário, por cima de tudo)
+    fig.add_trace(
+        go.Scatter(
+            x=df_tarde['data_str'],
+            y=df_tarde['co2'],
+            name='CO₂ Tarde',
+            mode='lines+markers+text',
+            line=dict(color='#228B22', width=3),
+            marker=dict(size=10, color='#228B22'),
+            text=df_tarde['co2'].round(1),
+            texttemplate='<b>%{text} ppm</b>',
+            textposition='top center',
+            textfont=dict(size=15, color='#000000', family='Arial Black'),
+            hovertemplate='<b>CO₂ - Tarde</b><br>%{y:.1f} ppm<extra></extra>'
+        ),
+        secondary_y=True
+    )
+    
+    # Calcular máximos para margem superior
+    max_temp_umid = max(df_sorted['temperatura'].max(), df_sorted['umidade'].max())
+    max_co2 = df_sorted['co2'].max()
+    
     # Configurar títulos dos eixos
-    fig.update_xaxes(title_text="Data")
-    fig.update_yaxes(title_text="Temperatura (°C) / Umidade (%)", secondary_y=False)
-    fig.update_yaxes(title_text="CO₂ (ppm)", secondary_y=True)
+    fig.update_xaxes(
+        title_text="Data",
+        categoryorder='array',
+        categoryarray=datas_ordenadas
+    )
+    fig.update_yaxes(
+        title_text="Temperatura (°C) / Umidade (%)",
+        secondary_y=False,
+        range=[0, max_temp_umid * 1.15]
+    )
+    fig.update_yaxes(
+        title_text="CO₂ (ppm)",
+        secondary_y=True,
+        range=[0, max_co2 * 1.15]
+    )
     
     # Layout
     fig.update_layout(
@@ -293,14 +485,14 @@ def create_consolidated_chart(df, local_name):
         barmode='group',
         hovermode='x unified',
         template='plotly_white',
-        height=500,
+        height=600,
         showlegend=True,
         legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
+            orientation="v",
+            yanchor="top",
+            y=0.99,
+            xanchor="left",
+            x=1.02
         )
     )
     
